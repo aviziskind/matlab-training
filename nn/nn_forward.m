@@ -11,7 +11,8 @@ function y =  nn_forward(model, input, nModulesMax)
     y = input;
     for mod_i = 1:nModules_use
         m = model.modules{mod_i};
-        switch m.type
+        module_type = strtok(m.type, '(');
+        switch module_type
             
             case 'SpatialConvolution',
                 assert(size(y, 3) == m.nInputPlane);
@@ -24,6 +25,8 @@ function y =  nn_forward(model, input, nModulesMax)
                 y = nn_spatialConvolutionMap(y, m.bias, m.weight, m.dH, m.dW, m.connTable);
                 
                 
+            case 'SpatialZeroPadding',
+                y = nn_spatialZeroPadding(y, m.pad_l, m.pad_r, m.pad_t, m.pad_b);
 %                 module_field_names = {'bias', 'weight', 'nInputPlane', 'nOutputPlane', 'kH', 'kW', 'dH', 'dW', 'connTable'};
                 
             case 'SpatialSubSampling',
@@ -52,10 +55,10 @@ function y =  nn_forward(model, input, nModulesMax)
             case 'LogSoftMax',
                 y = nn_logSoftMax(y);
 %                 module_field_names = {};
-
+               
 
             otherwise,
-                error('Unhandled case : module type = %s', module_str)
+                error('Unhandled case : module type = %s', module_type)
                 
         end
         
@@ -106,7 +109,7 @@ function y_out = nn_spatialConvolutionMap(y, bias, weight, dH, dW, connTable)
             
             
             
-   y_out  = nn_spatialConvolutionMap_c(y, bias, weight, dH, dW, connTable);
+   y_out  = nn_spatialConvolutionMap_c(single(y), bias, weight, dH, dW, connTable);
            
 
 %    assert( isequal(y_out, y_out3) );
@@ -123,8 +126,9 @@ end
 function y_out = nn_spatialConvolution(y, bias, weight, dH, dW)
        
             
-   y_out  = nn_spatialConvolution_c(y, bias, weight, dH, dW);    
+   y_out  = nn_spatialConvolution_c(single(y), bias, weight, dH, dW);    
 
+%    y_out  = nn_spatialConvolution_Matlab(y, bias, weight, dH, dW);    
         
 end
 
@@ -133,10 +137,10 @@ function y_out = nn_spatialSubSampling(y, kH, kW, dH, dW, maxFlag)
     if ~exist('maxFlag', 'var')
         maxFlag = 0;
     end
-    %%
+    %%sudo apt-get install gcc-4.7 g++-4.7
 %     maxFlag = 0;
     
-    y_out = nn_spatialPooling_c(y, kH, kW, dH, dW, maxFlag);
+    y_out = nn_spatialPooling_c(single(y), kH, kW, dH, dW, maxFlag);
 
 %     y_out2 = nn_spatialSubSampling_Matlab(y, kH, kW, dH, dW, maxFlag);
     
@@ -144,6 +148,26 @@ function y_out = nn_spatialSubSampling(y, kH, kW, dH, dW, maxFlag)
 %     assert(isequalToPrecision(y_out, y_out2, 1e-5));
 end
 
+
+function y_out = nn_spatialZeroPadding(y, pad_l, pad_r, pad_t, pad_b)
+    
+    y_out = padarray(y,     double([pad_t, pad_l]), 0, 'pre');
+    y_out = padarray(y_out, double([pad_b, pad_r]), 0, 'post');
+    
+    %{
+    nIn = size(y); nOut = nIn;
+    nOut(1) = nIn(1)+pad_t + pad_b;
+    nOut(2) = nIn(2)+pad_l + pad_r;
+    
+    y_out2 = zeros(nOut);
+    idx1 = pad_t + [1:nIn(1)];
+    idx2 = pad_l + [1:nIn(2)];
+    y_out2(idx1, idx2, :,:) = y;
+    
+    assert(isequal(y_out, y_out2));
+    %}
+
+end
 
 
 function y_out = nn_linear(y, bias, weight)

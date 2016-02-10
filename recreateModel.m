@@ -12,6 +12,8 @@ function model = recreateModel(S_modules)
         
         
 %         getModule = @(module_name) S_modules.(sprintf('m%d_%s', mod_i, module_name) );
+        module_type_orig = module_type;
+        module_type = strtok(module_type, '(');
         
         switch module_type
             case {'SpatialConvolution', 'SpatialConvolutionCUDA'},
@@ -31,8 +33,12 @@ function model = recreateModel(S_modules)
                 
             case {'Square', 'Sqrt', 'Tanh', 'Reshape', 'LogSoftMax'},
                 module_field_names = {};
+                
+            case {'SpatialZeroPadding'}
+                module_field_names = {'pad_l', 'pad_r', 'pad_t', 'pad_b'};
+                
             otherwise,
-                error('Unhandled case : module type = %s', module_str)
+                error('Unhandled case : module type = %s', module_type)
                 
         end
         

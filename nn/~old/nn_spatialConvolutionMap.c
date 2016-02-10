@@ -33,7 +33,7 @@ void nn_spatialConvolutionMap(double *pdY, double *pdBias, double *pdWeight, lon
                     for (t = 0; t < kW; t++) {
                         // weight_conv_input = weight_conv_input + weight(s,t, k,l) * y( dH*(i-1)+s, dW*(j-1)+t, l );
                         weight_conv_input = weight_conv_input + 
-                                                pdWeight[s + t*kH + k* kW*kH + l * kW_x_kH_x_nInputPlanes] * 
+                                                pdWeight[s + t*kH + l* kW*kH + k * kW_x_kH_x_nInputPlanes] * 
                                                 pdY[ dW*i+s + (dH*j+t)*h + l*h*w ];
                     }
                 }
