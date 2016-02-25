@@ -167,7 +167,11 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
         
     end
     
+    
+    [nLinType_str, nLinType_str_nice] =  getNonlinearityStr(networkOpts);
        
+    dropout_str = getDropoutStr(networkOpts);
+    
     
     gpu_str = '';
     gpu_str_nice = '';
@@ -183,9 +187,13 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
         end
         
     end
+    
 
-    convNet_str      = [convFcn_str      nStates_str      filtSizes_str       doPooling_str      poolSizes_str      poolType_str      poolStrides_str       gpu_str];
-    convNet_str_nice = [convFcn_str_nice nStates_str_nice filtSizes_str_nice  doPooling_str_nice poolSizes_str_nice poolType_str_nice poolStrides_str_nice  gpu_str_nice];
+    
+    
+    
+    convNet_str      = [convFcn_str      nStates_str      filtSizes_str       doPooling_str      poolSizes_str      poolType_str      poolStrides_str       nLinType_str      dropout_str gpu_str];
+    convNet_str_nice = [convFcn_str_nice nStates_str_nice filtSizes_str_nice  doPooling_str_nice poolSizes_str_nice poolType_str_nice poolStrides_str_nice  nLinType_str_nice dropout_str gpu_str_nice];
     
 end
 
