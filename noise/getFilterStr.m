@@ -68,10 +68,22 @@ function [filtStr, filtStr_nice] = getFilterStr(filt, wForWhiteFlag)
             norm_str = '';
             
         case 'band',
-            filtStr = sprintf('Nband%.0f', filt.cycPerLet_centFreq*10);
-            if doNiceStr
-                filtStr_nice = sprintf('Band noise: %.1f c/l', filt.cycPerLet_centFreq);
+            if isfield(filt, 'cycPerLet_centFreq')
+                
+                filtStr = sprintf('Nband%.0f', filt.cycPerLet_centFreq*10);
+                if doNiceStr
+                    filtStr_nice = sprintf('Band noise: %.1f c/l', filt.cycPerLet_centFreq);
+                end
+            elseif isfield(filt, 'pixPerCycle_centFreq')
+                
+                filtStr = sprintf('Nband%.0fppc', filt.pixPerCycle_centFreq);
+                
+            elseif isfield(filt, 'cycPerPix_centFreq')
+                
+                filtStr = sprintf('Nband%.0fcpp', filt.cycPerPix_centFreq);
             end
+            
+   
             
          case 'hi',
             filtStr = sprintf('Nhi%.0f', filt.cycPerLet_cutOffFreq*10);
