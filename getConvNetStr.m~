@@ -17,16 +17,19 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
     convFunction = networkOpts.convFunction;
     
     
-    
-    zeroPadForConvolutions
+    convFcn_str = '';
+    convFcn_str_nice = '';
     
     switch convFunction
-        case {'SpatialConvolutionMap', 'SpatialConvolutionMM'}, convFcn_str = '';
+        case 'SpatialConvolutionMap', convFcn_str = '';
+        case 'SpatialConvolutionMM', convFcn_str = 'm';
         case 'SpatialConvolution', convFcn_str = 'f';  % = 'fully connected'
         case 'SpatialConvolutionCUDA', convFcn_str = 'c'; 
+        case 'SpatialConvolutionCUDNN', convFcn_str = 'cd'; 
         otherwise, error('Unknown spatial convolution function : %s', convFunction);
     end
-
+    
+    
     convPad_str = '';
     convPad_str_nice = '';
     if isfield(networkOpts, 'zeroPadForConvolutions') && (networkOpts.zeroPadForConvolutions == true) 
@@ -54,11 +57,15 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
     
     filtSizes_str = '';
     filtSizes_str_nice = '';
+    assert( length(networkOpts.filtSizes) == nConvLayers );
+    
     if ~isequalUpTo(networkOpts.filtSizes, defaultParams.filtSizes, nConvLayers)        
         if isequalUpTo(networkOpts.filtSizes, repmat({0},1, nConvLayers), nConvLayers)
             filtSizes_str = '_nofilt';
-        else
-            filtSizes_str = ['_fs' toList(networkOpts.filtSizes, nConvLayers)];
+        elseif (nUnique(networkOpts.filtSizes)) == 1   
+            filtSizes_str = ['_fs' num2str(networkOpts.filtSizes{1})];
+        else             
+            filtSizes_str = ['_fs' abbrevList([networkOpts.filtSizes{:}])];            
         end
     end
     if makeNiceString && (makefullNiceStr || any(strncmpi(niceOutputFields, 'filtSizes', 8)))
@@ -176,7 +183,11 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
         
     end
     
+    
+    [nLinType_str, nLinType_str_nice] =  getNonlinearityStr(networkOpts);
        
+    dropout_str = getDropoutStr(networkOpts);
+    
     
     gpu_str = '';
     gpu_str_nice = '';
@@ -192,10 +203,11 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
         end
         
     end
-
-    convNet_str      = [convFcn_str      nStates_str      filtSizes_str       doPooling_str      poolSizes_str      poolType_str      poolStrides_str       gpu_str];
-    convNet_str_nice = [convFcn_str_nice nStates_str_nice filtSizes_str_nice  doPooling_str_nice poolSizes_str_nice poolType_str_nice poolStrides_str_nice  gpu_str_nice];
     
+    convNet_str      = [convFcn_str      nStates_str      filtSizes_str       convPad_str      doPooling_str      poolSizes_str      poolType_str      poolStrides_str       nLinType_str      dropout_str  gpu_str];
+    convNet_str_nice = [convFcn_str_nice nStates_str_nice filtSizes_str_nice  convPad_str_nice doPooling_str_nice poolSizes_str_nice poolType_str_nice poolStrides_str_nice  nLinType_str_nice dropout_str gpu_str_nice];
+    
+        
 end
 
 

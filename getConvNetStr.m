@@ -57,11 +57,15 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
     
     filtSizes_str = '';
     filtSizes_str_nice = '';
+    assert( length(networkOpts.filtSizes) == nConvLayers );
+    
     if ~isequalUpTo(networkOpts.filtSizes, defaultParams.filtSizes, nConvLayers)        
         if isequalUpTo(networkOpts.filtSizes, repmat({0},1, nConvLayers), nConvLayers)
             filtSizes_str = '_nofilt';
-        else
-            filtSizes_str = ['_fs' toList(networkOpts.filtSizes, nConvLayers)];
+        elseif (nUnique(networkOpts.filtSizes)) == 1   
+            filtSizes_str = ['_fs' num2str(networkOpts.filtSizes{1})];
+        else             
+            filtSizes_str = ['_fs' abbrevList([networkOpts.filtSizes{:}])];            
         end
     end
     if makeNiceString && (makefullNiceStr || any(strncmpi(niceOutputFields, 'filtSizes', 8)))
