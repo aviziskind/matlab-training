@@ -93,7 +93,7 @@ function networkOpts = fixConvNetParams(networkOpts)
     
     allSpatialNormTypes = {'Subtr', 'Div'};
     validNormTypes = {'Gauss'};
-    for norm_type_idx = 1, length(allSpatialNormTypes)
+    for norm_type_idx = 1:length(allSpatialNormTypes)
         normType = allSpatialNormTypes{norm_type_idx};
         
         masterNormFlagField = ['doSpat' normType  'Norm'];

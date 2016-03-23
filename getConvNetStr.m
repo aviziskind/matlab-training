@@ -63,13 +63,13 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
     
     
     
-    propertyOpts.filtSizes = struct('prefix', 'fs',   'prefix_nice', 'FilterSz',   'suffix', 'convPad_str',  'suffix_nice', 'convPad_str_nice',  ...
+    propertyOpts.filtSizes = struct('prefix', 'fs',   'prefix_nice', 'FilterSz',   'suffix', convPad_str,  'suffix_nice', convPad_str_nice,  ...
                                     'str_NA', 'nofilt', 'str_NA_nice', 'No Filter', 'is2D', true);
-    propertyOpts.poolSizes = struct('prefix ', 'psz', 'prefix_nice', 'PoolSize',  'suffix', 'poolPad_str',  'suffix_nice', 'poolPad_str_nice', ...
+    propertyOpts.poolSizes = struct('prefix', 'psz', 'prefix_nice', 'PoolSize',  'suffix', poolPad_str,  'suffix_nice', poolPad_str_nice, ...
                                     'str_NA', 'nopool', 'str_NA_nice', 'No Pooling', 'is2D', true);
-    propertyOpts.poolTypes = struct('prefix', 'pt',   'prefix_nice', 'Pnorm',  'suffix', '',  'suffix_nice',  ...
-                                    'str_NA', '',       'str_NA_nice', '', 'is2D', false);
-    propertyOpts.poolStrides = struct('prefix', 'pst', 'prefix_nice', 'PoolStrides',  'suffix', '',  'suffix_nice ', '',  ...
+    propertyOpts.poolTypes = struct('prefix', 'pt',   'prefix_nice', 'Pnorm',  'suffix', '',  'suffix_nice',  '', ...
+                                    'str_NA', '',       'str_NA_nice', '',  'is2D', false);
+    propertyOpts.poolStrides = struct('prefix', 'pst', 'prefix_nice', 'PoolStrides',  'suffix', '',  'suffix_nice', '',  ...
                                     'str_NA', '',       'str_NA_nice', '', 'is2D', true);
 
     networkPropertyStr = @(fieldName)  getNetworkPropertyStr(fieldName, networkOpts, defaultParams, propertyOpts);
@@ -263,6 +263,7 @@ end
 function [property_str,property_str_nice] = getNetworkPropertyStr(fieldName, networkOpts, defaultParams, propertyOpts)  %-- fieldPrefix, fldAbbrev_nice, str_NA, str_NA_nice, is2D
     nConvLayers = length(networkOpts.nStatesConv);
     networkProp = networkOpts.(fieldName);
+    networkProp_str = cellfun(@num2str, networkProp, 'un', 0);
     defaultProp = defaultParams.(fieldName);
     property_str = '';
     property_str_nice = '';
@@ -277,30 +278,30 @@ function [property_str,property_str_nice] = getNetworkPropertyStr(fieldName, net
     end
 
     assert(length(networkProp) == nConvLayers)
-    if ~isequal_upTo(networkProp, defaultProp, nConvLayers) 
-        if isequal_upTo(networkProp, table.rep(0, nConvLayers), nConvLayers) 
+    if ~isequalUpTo(networkProp, defaultProp, nConvLayers) 
+        if isequalUpTo(networkProp, num2cell(zeros(1, nConvLayers)), nConvLayers) 
             property_str =      ['_'  opt.str_NA];
             property_str_nice = [ opt.str_NA_nice '. '];
 
         elseif (nUnique(networkProp)) == 1 % 
-            property_str = ['_'  opt.prefix networkProp{1}  opt.suffix];
-            prop_str_nice = extendProp(networkProp[1]);
+            property_str = ['_'  opt.prefix networkProp_str{1}  opt.suffix];
+            prop_str_nice = extendProp(networkProp_str{1});
             property_str_nice = [opt.prefix_nice '='  prop_str_nice  opt.suffix_nice '. '];
 
         else
             
             if ischar( networkProp{1} )
-                list_str = strjoin( networkProp, '_');
+                list_str = strjoin( networkProp_str, '_');
                 list_str_long = list_str;
             else
-                list_str = abbrevList(networkProp);
-                list_str_long = abbrevList(networkProp, '_', -1);
+                list_str = abbrevList(  [networkProp{:}] );
+                list_str_long = abbrevList([networkProp{:}], '_', -1);
             end
 
             property_str = ['_'  opt.prefix  list_str opt.suffix];
 
             tbl_vals = strsplit(list_str_long, '_');
-            tbl_ext_vals = cellfun(@extendProp, tbl_vals );
+            tbl_ext_vals = cellfun(@extendProp, tbl_vals, 'un', 0);
             list_nice_ext = strjoin( tbl_ext_vals, ',');
 
             property_str_nice =  [opt.prefix_nice  '='  list_nice_ext  opt.suffix_nice  '. '];
