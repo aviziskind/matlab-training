@@ -1,7 +1,14 @@
 function n = generateNoiseSamples(nNoiseSamples, noiseType, rand_seed)
 
-    rng('default');
-    if nargin >= 3 && ~isempty(rand_seed)
+    if ~exist('nNoiseSamples', 'var') || isempty(nNoiseSamples)
+        nNoiseSamples = 1e5;
+    end
+    
+    if ~exist('noiseType', 'var') || isempty(noiseType)
+        noiseType = 'gaussian';
+    end
+    
+    if exist('rand_seed', 'var') && ~isempty(rand_seed)
         rng(rand_seed);
     end
 

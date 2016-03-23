@@ -12,7 +12,7 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
     networkOpts = fixConvNetParams(networkOpts);
     
     nConvLayers = length(networkOpts.nStatesConv);
-    nFCLayers = length(networkOpts.nStatesFC);
+    nFCLayers   = length(networkOpts.nStatesFC);
 
     convFunction = networkOpts.convFunction;
     
@@ -21,24 +21,34 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
     convFcn_str_nice = '';
     
     switch convFunction
-        case 'SpatialConvolutionMap', convFcn_str = '';
-        case 'SpatialConvolutionMM', convFcn_str = 'm';
         case 'SpatialConvolution', convFcn_str = 'f';  % = 'fully connected'
-        case 'SpatialConvolutionCUDA', convFcn_str = 'c'; 
+        case 'SpatialConvolutionMM', convFcn_str = 'm';
+        case 'SpatialConvolutionMap', convFcn_str = '';
         case 'SpatialConvolutionCUDNN', convFcn_str = 'cd'; 
+        case 'SpatialConvolutionCUDA', convFcn_str = 'c'; 
         otherwise, error('Unknown spatial convolution function : %s', convFunction);
     end
     
     
     convPad_str = '';
     convPad_str_nice = '';
+    % default is : DON'T add zeroPadding before convolutions
     if isfield(networkOpts, 'zeroPadForConvolutions') && (networkOpts.zeroPadForConvolutions == true) 
         convPad_str = 'P';
         convPad_str_nice = '(P)';
     end
-
     
-    nStates_str = toList( networkOpts.nStatesConv );
+    
+    poolPad_str = '';
+    poolPad_str_nice = '';
+    %  default is : DO add zeroPadding before pooling
+    if isfield(networkOpts, 'zeroPadForPooling') && (networkOpts.zeroPadForPooling == false) 
+        poolPad_str = 'NP';
+        poolPad_str_nice = '(NP)';
+    end    
+    
+    
+    nStates_str = toList( networkOpts.nStatesConv, [], '_');
     nStates_str_nice = '';
     if makeNiceString && (makefullNiceStr || any(strncmpi(niceOutputFields, 'nStates', 7)))
         nStates_str_nice = ['nFilt=' toList(networkOpts.nStatesConv, [], ',') '.'];
@@ -53,32 +63,20 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
     
     
     
+    propertyOpts.filtSizes = struct('prefix', 'fs',   'prefix_nice', 'FilterSz',   'suffix', 'convPad_str',  'suffix_nice', 'convPad_str_nice',  ...
+                                    'str_NA', 'nofilt', 'str_NA_nice', 'No Filter', 'is2D', true);
+    propertyOpts.poolSizes = struct('prefix ', 'psz', 'prefix_nice', 'PoolSize',  'suffix', 'poolPad_str',  'suffix_nice', 'poolPad_str_nice', ...
+                                    'str_NA', 'nopool', 'str_NA_nice', 'No Pooling', 'is2D', true);
+    propertyOpts.poolTypes = struct('prefix', 'pt',   'prefix_nice', 'Pnorm',  'suffix', '',  'suffix_nice',  ...
+                                    'str_NA', '',       'str_NA_nice', '', 'is2D', false);
+    propertyOpts.poolStrides = struct('prefix', 'pst', 'prefix_nice', 'PoolStrides',  'suffix', '',  'suffix_nice ', '',  ...
+                                    'str_NA', '',       'str_NA_nice', '', 'is2D', true);
+
+    networkPropertyStr = @(fieldName)  getNetworkPropertyStr(fieldName, networkOpts, defaultParams, propertyOpts);
     % (1) filtsizes
     
-    filtSizes_str = '';
-    filtSizes_str_nice = '';
-    assert( length(networkOpts.filtSizes) == nConvLayers );
-    
-    if ~isequalUpTo(networkOpts.filtSizes, defaultParams.filtSizes, nConvLayers)        
-        if isequalUpTo(networkOpts.filtSizes, repmat({0},1, nConvLayers), nConvLayers)
-            filtSizes_str = '_nofilt';
-        elseif (nUnique(networkOpts.filtSizes)) == 1   
-            filtSizes_str = ['_fs' num2str(networkOpts.filtSizes{1})];
-        else             
-            filtSizes_str = ['_fs' abbrevList([networkOpts.filtSizes{:}])];            
-        end
-    end
-    if makeNiceString && (makefullNiceStr || any(strncmpi(niceOutputFields, 'filtSizes', 8)))
-        if isequalUpTo(networkOpts.filtSizes, repmat({0},1, nConvLayers), nConvLayers)
-            filtSizes_str_nice = ' No Filter.';
-        else
-            
-            filtSizes_x = cellfun(@(fsz) sprintf('%dx%d', fsz, fsz), networkOpts.filtSizes, 'un', 0);
-            convFiltSizeStr = toList(filtSizes_x, nConvLayers, ', ');
-            filtSizes_str_nice = [' FilterSize='  convFiltSizeStr  '.'];
-            
-        end
-    end
+    [filtSizes_str, filtSizes_str_nice] = networkPropertyStr('filtSizes');
+
 
     % (2) pooling
     skipAllPooling = ~networkOpts.doPooling;
@@ -91,14 +89,8 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
     skipAllPooling = skipAllPooling || (nLayersWithPooling == 0);
                     
     
-    doPooling_str = '';    
-    doPooling_str_nice = '';
-    poolSizes_str = '';
-    poolSizes_str_nice = '';
-    poolType_str = '';
-    poolType_str_nice = '';
-    poolStrides_str = '';
-    poolStrides_str_nice = '';
+    [doPooling_str,      poolSizes_str,       poolTypes_str,      poolStrides_str]      = deal('');    
+    [doPooling_str_nice, poolSizes_str_nice,  poolTypes_str_nice, poolStrides_str_nice] = deal('');
     
     
     if skipAllPooling
@@ -114,71 +106,14 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
         if makeNiceString && (makefullNiceStr || any(strcmpi(niceOutputFields, 'doPooling')) )
            doPooling_str_nice = ' Pooling: ';
         end
-        if nLayersWithPooling < nConvLayers
-                            
-            for layer_i = 1:nConvLayers
-%                doPooling_i = (networkOpts.poolSizes{layer_i} == 0) ;
-%                doPooling_str = [doPooling_str iff(doPooling_i, '_pool', '_nopool') ];
-                
-                if  makeNiceString && (makefullNiceStr || any(strcmpi(niceOutputFields, 'doPooling')) )
-                    % doPooling_str_nice =doPooling_str_nice .. iff(doPooling_i, 'Yes', 'No') .. iff(layer_i < nConvLayers, '/', '')
-                end
-            end
-                
-        end
                     
+        [poolSizes_str, poolSizes_str_nice] = networkPropertyStr('poolSizes');
+        
+        [poolTypes_str, poolTypes_str_nice] = networkPropertyStr('poolTypes');       
                 
-        % 2b. Pool Size(s)
-        if ~isequalUpTo(networkOpts.poolSizes, defaultParams.poolSizes, nConvLayers)
-            poolSizes_str = ['_psz' toList(networkOpts.poolSizes, nConvLayers)];
-        end
-        if makeNiceString && (makefullNiceStr || any(strncmpi(niceOutputFields, 'poolSizes', 8)) )
-%             str_func = @(i) sprintf('%dx%d', i);
-            poolSizes_x = cellfun(@(psz) sprintf('%dx%d', psz, psz), networkOpts.poolSizes, 'un', 0);
-            convPoolSizeStr = toList(poolSizes_x, nConvLayers, ', ');
-            poolSizes_str_nice = [' PoolSize='  convPoolSizeStr   '.'];
-        end
-        
-        % 2b. Pool Type(s) (pnorm)
-        if ~isequalUpTo(networkOpts.poolType, defaultParams.poolType, nConvLayers)
-            % print('filtSizes', networkOpts.filtSizes, filtSizes_default)
-            if nUnique(networkOpts.poolType) > 1
-                poolType_str = ['_pt'  toList(networkOpts.poolType,nConvLayers)];
-            else
-                poolType_str = ['_pt' num2str(networkOpts.poolType{1})];
-            end
-        end       
-        if makeNiceString && (makefullNiceStr || any(strncmpi(niceOutputFields, 'poolType', 8)) ) 
-            if nUnique(networkOpts.poolType) > 1
-                poolType_str_nice = [' Pnorm='  toList(networkOpts.poolType, nConvLayers, ',')  '.'];
-            else
-                poolType_str_nice = [' Pnorm='  num2str(networkOpts.poolType{1})  '.'];
-            end
-        
-        end
-        
-        % 2c. PoolStrides(s)
-        %{
-        defaultPoolStrides = defaultParams.poolStrides;
-        if strcmpi(defaultPoolStrides, 'auto')
-            defaultPoolStrides = networkOpts.poolSizes; % use poolSize of current network
-        end
-        
-        currentPoolStrides = networkOpts.poolStrides;
-        if strcmpi(currentPoolStrides, 'auto')
-            currentPoolStrides = networkOpts.poolSizes;
-        end
-        
-        if ~isequalUpTo(currentPoolStrides, defaultPoolStrides, nConvLayers)
-            poolStrides_str = ['_pst' toList(currentPoolStrides, nConvLayers)];
-        end
-        %}
         assert(defaultPoolStrideIsAuto)
         if ~isequalUpTo(networkOpts.poolSizes, networkOpts.poolStrides, nConvLayers)
-            poolStrides_str = ['_pst' toList(networkOpts.poolStrides, nConvLayers)];
-        end
-        if makeNiceString && (makefullNiceStr || any(strncmpi(niceOutputFields, 'poolStrides', 10)) ) 
-            poolStrides_str_nice = [' PoolStrd=' toList(networkOpts.poolStrides, nConvLayers, ',')  '.'];
+            [poolStrides_str, poolStrides_str_nice] = networkPropertyStr('poolStrides');
         end
         
     end
@@ -186,26 +121,17 @@ function [convNet_str, convNet_str_nice] = getConvNetStr(networkOpts, niceOutput
     
     [nLinType_str, nLinType_str_nice] =  getNonlinearityStr(networkOpts);
        
+    gpu_str = getTrainOnGPUStr(networkOpts);
+
     dropout_str = getDropoutStr(networkOpts);
     
     
-    gpu_str = '';
-    gpu_str_nice = '';
-    useCUDAmodules = ~isempty(strfind(networkOpts.convFunction, 'CUDA'));
-    if isfield(networkOpts, 'trainOnGPU') && networkOpts.trainOnGPU 
-        gpu_str = '_GPU';
-        if useCUDAmodules && networkOpts.GPU_batchSize > 1
-            gpu_str = sprintf('_GPU%d', networkOpts.GPU_batchSize);
-        end
-        
-        if makeNiceString && (makefullNiceStr || any(strcmpi(niceOutputFields, 'GPU')) ) 
-            gpu_str_nice = ' (GPU)';
-        end
-        
-    end
-    
-    convNet_str      = [convFcn_str      nStates_str      filtSizes_str       convPad_str      doPooling_str      poolSizes_str      poolType_str      poolStrides_str       nLinType_str      dropout_str  gpu_str];
-    convNet_str_nice = [convFcn_str_nice nStates_str_nice filtSizes_str_nice  convPad_str_nice doPooling_str_nice poolSizes_str_nice poolType_str_nice poolStrides_str_nice  nLinType_str_nice dropout_str gpu_str_nice];
+    convNet_str      = [convFcn_str      nStates_str      filtSizes_str       ...
+                        doPooling_str      poolSizes_str      poolTypes_str      poolStrides_str       ...
+                        nLinType_str      dropout_str  gpu_str];
+    convNet_str_nice = [convFcn_str_nice nStates_str_nice filtSizes_str_nice  ...
+                        doPooling_str_nice poolSizes_str_nice poolTypes_str_nice poolStrides_str_nice  ...
+                        nLinType_str_nice dropout_str gpu_str];
     
         
 end
@@ -333,5 +259,57 @@ function tf = isequalUpTo(x,y,maxN)
         
 end
 
+
+function [property_str,property_str_nice] = getNetworkPropertyStr(fieldName, networkOpts, defaultParams, propertyOpts)  %-- fieldPrefix, fldAbbrev_nice, str_NA, str_NA_nice, is2D
+    nConvLayers = length(networkOpts.nStatesConv);
+    networkProp = networkOpts.(fieldName);
+    defaultProp = defaultParams.(fieldName);
+    property_str = '';
+    property_str_nice = '';
+    opt = propertyOpts.(fieldName);
+
+    function s_ext = extendProp(s)
+        if opt.is2D 
+            s_ext = [s 'x' s];
+        else
+            s_ext = num2str(s);
+        end
+    end
+
+    assert(length(networkProp) == nConvLayers)
+    if ~isequal_upTo(networkProp, defaultProp, nConvLayers) 
+        if isequal_upTo(networkProp, table.rep(0, nConvLayers), nConvLayers) 
+            property_str =      ['_'  opt.str_NA];
+            property_str_nice = [ opt.str_NA_nice '. '];
+
+        elseif (nUnique(networkProp)) == 1 % 
+            property_str = ['_'  opt.prefix networkProp{1}  opt.suffix];
+            prop_str_nice = extendProp(networkProp[1]);
+            property_str_nice = [opt.prefix_nice '='  prop_str_nice  opt.suffix_nice '. '];
+
+        else
+            
+            if ischar( networkProp{1} )
+                list_str = strjoin( networkProp, '_');
+                list_str_long = list_str;
+            else
+                list_str = abbrevList(networkProp);
+                list_str_long = abbrevList(networkProp, '_', -1);
+            end
+
+            property_str = ['_'  opt.prefix  list_str opt.suffix];
+
+            tbl_vals = strsplit(list_str_long, '_');
+            tbl_ext_vals = cellfun(@extendProp, tbl_vals );
+            list_nice_ext = strjoin( tbl_ext_vals, ',');
+
+            property_str_nice =  [opt.prefix_nice  '='  list_nice_ext  opt.suffix_nice  '. '];
+
+        end
+    end
+
+   
+end
+    
 
 

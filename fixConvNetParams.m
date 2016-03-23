@@ -1,5 +1,6 @@
 function networkOpts = fixConvNetParams(networkOpts)
      
+ 
     if length(networkOpts) > 1 
         for j = 1,length(networkOpts)
             networkOpts(j) = fixNetworkParams(networkOpts(j));
@@ -14,19 +15,15 @@ function networkOpts = fixConvNetParams(networkOpts)
     
     if ~isfield(networkOpts, 'nStatesConv')    
         nStates = networkOpts.nStates;
-        idx_pos = nStates > 0;
-        networkOpts.nStatesConv = nStates(idx_pos);
-        networkOpts.nStatesFC = -nStates(~idx_pos);        
+        idx_conv = nStates > 0;
+        networkOpts.nStatesConv = nStates(idx_conv);
+        networkOpts.nStatesFC = -nStates(~idx_conv);        
     end
 
     nStatesConv = networkOpts.nStatesConv;
-%     nStatesFC =   networkOpts.nStatesFC;
-
     nConvLayers = length(nStatesConv);
 
-    
-%     nStates = networkOpts.nStates;
-            
+          
         
     %  if there are any parameters not defined, assume they are the default parameters
     fn_default = fieldnames(defaultParams);
@@ -37,9 +34,9 @@ function networkOpts = fixConvNetParams(networkOpts)
     end
             
     
-    networkOpts = makeSureFieldIsCorrectLength(networkOpts, 'filtSizes', nConvLayers);
     
-    
+    networkOpts = makeSureFieldIsCorrectLength(networkOpts, 'filtSizes', @isnumeric);
+   
     %  if any filtSizes == 0, set corresponding nStates equal to the number of states in the previous layer.
     for i = 1:nConvLayers 
         if networkOpts.filtSizes{i} == 0 
@@ -63,7 +60,7 @@ function networkOpts = fixConvNetParams(networkOpts)
         
     else
         % - (1) poolSizes
-        networkOpts = makeSureFieldIsCorrectLength(networkOpts, 'poolSizes', nConvLayers);
+        networkOpts = makeSureFieldIsCorrectLength(networkOpts, 'poolSizes', @isnumeric);
                 
         
         % - (2) poolStrides
@@ -71,10 +68,11 @@ function networkOpts = fixConvNetParams(networkOpts)
             networkOpts.poolStrides = networkOpts.poolSizes;
         end
         
-        networkOpts = makeSureFieldIsCorrectLength(networkOpts, 'poolStrides', nConvLayers);
+        networkOpts = makeSureFieldIsCorrectLength(networkOpts, 'poolStrides', @isnumeric);
         % - (3) poolTypes        
         
-        networkOpts = makeSureFieldIsCorrectLength(networkOpts, 'poolType', nConvLayers);
+        isValidPoolType = @(x) isnumeric(x) ||  strcmp(x, 'MAX');
+        networkOpts = makeSureFieldIsCorrectLength(networkOpts, 'poolTypes', isValidPoolType);
 
         
         %  if any layer has no pooling (poolSize == 0 or 1), set the stride & type to 0
@@ -91,17 +89,69 @@ function networkOpts = fixConvNetParams(networkOpts)
         end
         
     end    
-    return 
+    
+    
+    allSpatialNormTypes = {'Subtr', 'Div'};
+    validNormTypes = {'Gauss'};
+    for norm_type_idx = 1, length(allSpatialNormTypes)
+        normType = allSpatialNormTypes{norm_type_idx};
+        
+        masterNormFlagField = ['doSpat' normType  'Norm'];
+        normTypeField       = ['spat'  normType   'NormType'];
+        normWidthField      = ['spat'  normType   'NormWidth'];
+        
+    
+        % -- (3a) check if master flag is set to 0
+        skipAllNorm = ~isfield(networkOpts, masterNormFlagField) || (networkOpts.(masterNormFlagField) == false ) || ...
+            isempty(networkOpts.(normTypeField))  || isempty(networkOpts.(normWidthField));
+        
+        
+%         -- (3b) check if master flag is set to 0
+        if skipAllNorm 
+            networkOpts.(normTypeField)   = repmat({'none'}, 1, nConvLayers);
+            networkOpts.(normWidthField)  = zeros(1, nConvLayers);
+            
+        else
+            
+            isValidSpatialNormType = @(x) any(strcmp(x, validNormTypes));    
+            networkOpts = makeSureFieldIsCorrectLength(networkOpts, normTypeField,  isValidSpatialNormType);
+            
+            networkOpts = makeSureFieldIsCorrectLength(networkOpts, normWidthField, @isnumeric);
+        end
+        
+        
+%         -- (3c) if no normalization at all, set the master flag to 0, and set all other parameters accordingly
+        normInAnyLayers = false;
+        for i = 1:nConvLayers 
+            if (networkOpts.(normWidthField)(i) > 0) 
+                normInAnyLayers = true;
+            end
+        end
+        networkOpts.(masterNormFlagField) = normInAnyLayers && ~skipAllNorm;
+        
+        if ~normInAnyLayers 
+            networkOpts.(normTypeField)   = repmat({'none'}, 1, nConvLayers);
+            networkOpts.(normWidthField)  = zeros(1, nConvLayers);
+        end
+        
+        
+    end    
+    
+    
+
     
     
 end
 
 
-function networkOpts = makeSureFieldIsCorrectLength(networkOpts, fieldName, nConvLayers)
-    %  make sure is in table format (if was a number)
+function networkOpts = makeSureFieldIsCorrectLength(networkOpts, fieldName, isValid_func)
+    nConvLayers = length(networkOpts.nStatesConv);
+    %  make sure is in vector format (if is a cell array)
     if iscell(networkOpts.(fieldName))
         networkOpts.(fieldName) = [networkOpts.(fieldName){:}];
     end
+    
+    %  make sure is in cell array format (if numeric)
     if ~iscell(networkOpts.(fieldName)) 
         if ischar( networkOpts.(fieldName) )
             networkOpts.(fieldName) = {networkOpts.(fieldName)};
@@ -130,4 +180,12 @@ function networkOpts = makeSureFieldIsCorrectLength(networkOpts, fieldName, nCon
         end
     end
 
+    if exist('isValid_func', 'var')
+        for i = 1:nConvLayers 
+            if ~isValid_func( networkOpts.(fieldName){i} ) 
+                error('Error for field %s: %s\n  (did not satisfy criteria function)', fieldName, tostring(networkOpts.(fieldName){i}) ) ;
+            end
+        end
+
+    end   
 end
