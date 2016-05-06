@@ -16,7 +16,7 @@ function model = recreateModel(S_modules)
         module_type = strtok(module_type, '(');
         
         switch module_type
-            case {'SpatialConvolution', 'SpatialConvolutionCUDA'},
+            case {'SpatialConvolution', 'SpatialConvolutionMM', 'SpatialConvolutionCUDA'},
                 module_field_names = {'bias', 'weight', 'nInputPlane', 'nOutputPlane', 'kH', 'kW', 'dH', 'dW'};
             
             case 'SpatialConvolutionMap',
@@ -25,13 +25,16 @@ function model = recreateModel(S_modules)
             case 'SpatialSubSampling',
                 module_field_names = {'kH', 'kW', 'dH', 'dW'};
                 
-            case 'SpatialMaxPooling', 
+            case 'SpatialLPPooling',
+                module_field_names = {};
+
+            case {'SpatialMaxPooling', 'SpatialAveragePooling'},
                 module_field_names = {'kH', 'kW', 'dH', 'dW', 'indices'};
                 
             case 'Linear',
                 module_field_names = {'bias', 'weight'};
                 
-            case {'Square', 'Sqrt', 'Tanh', 'Reshape', 'LogSoftMax'},
+            case {'Square', 'Sqrt', 'Tanh', 'Reshape', 'LogSoftMax', 'ReLU'},
                 module_field_names = {};
                 
             case {'SpatialZeroPadding'}

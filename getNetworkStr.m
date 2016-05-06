@@ -25,4 +25,11 @@ function [str, str_nice] = getNetworkStr(networkOpts, varargin)
     end
 
     
+    if isfield(networkOpts, 'partModelOpts') && ~isempty(networkOpts.partModelOpts)
+        partModelOpts_str = ['_' getPartModelOptStr(networkOpts.partModelOpts)];  %  -- e.g. indep_90 (independent scales, 90x90 input)
+%         netStr = netStr .. partModelOpts_str
+        str = [str partModelOpts_str];
+    end
+
+    
 end
