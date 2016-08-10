@@ -1,12 +1,16 @@
 % local SpatialSubtractiveNormalization, parent = torch.class('nn.SpatialSubtractiveNormalization','nn.Module')
 
-function Y = nn_SpatialSubtractiveNormalization(X, kernel_arg)
+function Y = nn_SpatialSubtractiveNormalization(X, kernel_arg, doCircular)
     if ~isa(X, 'float')
         X = single(X);
     end
 
     if nargin < 2
         kernel_arg = 7;
+    end
+    
+    if nargin < 3
+        doCircular = false;
     end
 
     if isscalar(kernel_arg)
@@ -16,26 +20,29 @@ function Y = nn_SpatialSubtractiveNormalization(X, kernel_arg)
         k_x = kernel_arg;
     end
     
+    
+    nk = length(k_x);
+    if doCircular      
+        [X, idx_central] = circPad(X, nk);
+    end
+        
+    
     k_x = k_x/sum(k_x);
 
-    coef = estimate_mean(ones(size(X)), k_x);
+    coef = nn_estimate_mean(ones(size(X)), k_x);
 
-    localsums = estimate_mean(X, k_x);
+    localsums = nn_estimate_mean(X, k_x);
     adjustedsums = localsums ./ coef;
     
     Y = X - adjustedsums;
-   
+
+    
+    if doCircular
+        Y = Y(idx_central{:}); 
+    end
+    
 end
 
-
-function Y = estimate_mean(X, kx)
-    kernel_size = length(kx);
-    pad_size = (kernel_size-1)/2;
-
-    y1 = padarray(X, [pad_size pad_size], 0, 'both');
-    y2 = conv2(y1, kx, 'valid');
-    Y  = conv2(y2, kx', 'valid');
-end
 
         
         

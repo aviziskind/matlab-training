@@ -1,4 +1,3 @@
-
 function Y = nn_SpatialDivisiveNormalization(X, kernel_arg, threshold)
     if ~isa(X, 'float')
         X = single(X);
@@ -26,9 +25,9 @@ function Y = nn_SpatialDivisiveNormalization(X, kernel_arg, threshold)
     
     k_x = k_x/sum(k_x);
 
-    coef = estimate_mean(ones(size(X)), k_x);
+    coef = nn_estimate_mean(ones(size(X)), k_x);
 
-    localstds = estimate_std(X, k_x);
+    localstds = nn_estimate_std(X, k_x);
     adjustedstds = localstds ./ coef;
     thresholdedstds = applyThreshold(adjustedstds, threshold);
     
@@ -36,19 +35,19 @@ function Y = nn_SpatialDivisiveNormalization(X, kernel_arg, threshold)
    
 end
 
+% 
+% function Y = estimate_mean(X, kx)
+%     kernel_size = length(kx);
+%     pad_size = (kernel_size-1)/2;
+% 
+%     y1 = padarray(X, [pad_size pad_size], 0, 'both');
+%     y2 = conv2(y1, kx, 'valid');
+%     Y  = conv2(y2, kx', 'valid');
+% end
 
-function Y = estimate_mean(X, kx)
-    kernel_size = length(kx);
-    pad_size = (kernel_size-1)/2;
 
-    y1 = padarray(X, [pad_size pad_size], 0, 'both');
-    y2 = conv2(y1, kx, 'valid');
-    Y  = conv2(y2, kx', 'valid');
-end
-
-
-function Y = estimate_std(X, kx)
-    Y = sqrt( estimate_mean( X.^2, kx ) );
+function Y = nn_estimate_std(X, kx)
+    Y = sqrt( nn_estimate_mean( X.^2, kx ) );
 end
 
 function X = applyThreshold(X, th)
