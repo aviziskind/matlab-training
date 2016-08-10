@@ -54,9 +54,9 @@ function networkOpts = fixConvNetParams(networkOpts)
     skipAllPooling = ~networkOpts.doPooling;
         
     if skipAllPooling 
-        networkOpts.poolSizes = {zeros(1, nConvLayers)};
-        networkOpts.poolStrides = {zeros(1, nConvLayers)};
-        networkOpts.poolTypes = {zeros(1, nConvLayers)};
+        networkOpts.poolSizes =  num2cell(zeros(1, nConvLayers)) ;
+        networkOpts.poolStrides =  num2cell( zeros(1, nConvLayers) );
+        networkOpts.poolTypes =  num2cell(zeros(1, nConvLayers));
         
     else
         % - (1) poolSizes

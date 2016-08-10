@@ -26,10 +26,20 @@ function [str, str_nice] = getNetworkStr(networkOpts, varargin)
 
     
     if isfield(networkOpts, 'partModelOpts') && ~isempty(networkOpts.partModelOpts)
-        partModelOpts_str = ['_' getPartModelOptStr(networkOpts.partModelOpts)];  %  -- e.g. indep_90 (independent scales, 90x90 input)
+        partModelOpts_str = getPartModelOptStr(networkOpts.partModelOpts);  %  -- e.g. indep_90 (independent scales, 90x90 input)
 %         netStr = netStr .. partModelOpts_str
-        str = [str partModelOpts_str];
+        if ~isempty(partModelOpts_str)
+            str = [str '_' partModelOpts_str];
+        end
+    end
+    
+    
+    if isfield(networkOpts, 'nConfidenceUnits') && networkOpts.nConfidenceUnits > 0
+        str = [str  sprintf('_Conf%d', networkOpts.nConfidenceUnits)];
     end
 
+    if isfield(networkOpts, 'trialId') && ~isequal(networkOpts.trialId, 1)
+        str = [str  '__tr' num2str(networkOpts.trialId)];
+    end
     
 end

@@ -48,6 +48,9 @@ function y =  nn_forward(model, input, nModulesMax)
                 
             case 'Tanh', 
                 y = tanh(y);
+
+            case 'ReLU', 
+                y = ReLU(y);
                 
             case 'Reshape', 
                 y = y(:);
@@ -183,5 +186,11 @@ function y_out = nn_logSoftMax(y)
 %     a = sum (exp(y));
 %     
 %     y_out = log( (1 / a) * exp(y) );
+    
+end
+
+function y_out = ReLU(y)
+    y_out = y;
+    y_out (y<0) = 0;
     
 end
