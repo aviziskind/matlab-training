@@ -63,7 +63,8 @@ function [filtStr, filtStr_nice] = getFilterStr(filt, wForWhiteFlag)
                 filtStr = '';
             end
             if doNiceStr
-                filtStr_nice = 'White noise^{ }';
+%                 filtStr_nice = 'White noise^{ }';
+                filtStr_nice = 'White noise';
             end
             norm_str = '';
             
@@ -140,6 +141,18 @@ function [filtStr, filtStr_nice] = getFilterStr(filt, wForWhiteFlag)
                         
 
     end
-    filtStr = [filtStr norm_str];
+    
+    radius_str = '';
+    if isfield(filt, 'radius') 
+        radius_str = sprintf('_rad%d', filt.radius);
+        
+%         unit_str = '';
+%         if isfield(filt, 'radius_units')
+%             unit_str = switchh(filt.radius_units, {'pixels', 'letter'}, {'pix', 
+        
+%         radius_str = sprintf('_r%d', filt.radius_units);
+    end
+    
+    filtStr = [filtStr norm_str radius_str];
 
 end

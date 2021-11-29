@@ -1,4 +1,4 @@
-function [snr_th, bestFitFunc, snr_th_ci, b_best_fit] = getSNRthreshold(allLogSNRs, pcorrect, opt)
+function [snr_th, bestFitFunc, snr_th_ci, b_best_fit1] = getSNRthreshold(allLogSNRs, pcorrect, opt)
     
     if nargin < 3
         opt = struct;
@@ -91,7 +91,7 @@ function [snr_th, bestFitFunc, snr_th_ci, b_best_fit] = getSNRthreshold(allLogSN
     snr_th = nan;
     bestFitFunc = [];
     snr_th_ci = nan(1,2);
-    b_best_fit = nan(1, 3);
+    b_best_fit1 = nan(1, 3);
     if endIsBelowTh
         return;
 %         snr_est = allLogSNRs(end);
@@ -145,8 +145,9 @@ function [snr_th, bestFitFunc, snr_th_ci, b_best_fit] = getSNRthreshold(allLogSN
         [b_best_fit, resid,J,Sigma,mse] = nlinfit(allSNRs, pcorrect, weibull_func, beta0) ;
         b_best_fit = abs(b_best_fit);
         
+        b_best_fit1 = b_best_fit;
         if assumeMax100pct
-%             b_best_fit = [1, b_best_fit];
+            b_best_fit1 = [1 b_best_fit];
         end
         
         [msg_str,msg_id] = lastwarn;
@@ -234,12 +235,14 @@ function [snr_th, bestFitFunc, snr_th_ci, b_best_fit] = getSNRthreshold(allLogSN
     end
     
     3;
-    show = 0;
+    show = 1;
     if show
        %% 
 %        b_best_fit = [1 1.2407    0.8981];
 
-       bestFitFunc = @(x) weibull(b_best_fit, x, gamma)*100;
+
+
+       bestFitFunc = @(x) weibull(b_best_fit1 , x, gamma)*100;
        
        figure(55); clf; hold on;
        plot(allSNRs, pcorrect*100, 'bo');
@@ -256,8 +259,8 @@ function [snr_th, bestFitFunc, snr_th_ci, b_best_fit] = getSNRthreshold(allLogSN
         plot(allSNRs_fine,pcorrect_fine, ['b-'], 'linewidth', 1)
         
         if calcCI
-            plot(allSNRs_fine, pcorrect_lo, 'ro:')
-            plot(allSNRs_fine, pcorrect_hi, 'ro:');
+%             plot(allSNRs_fine, pcorrect_lo, 'ro:')
+%             plot(allSNRs_fine, pcorrect_hi, 'ro:');
             line(snr_th_ci, 64*[1, 1], 'color', 'k');
         end
         3;

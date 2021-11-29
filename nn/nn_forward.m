@@ -1,17 +1,27 @@
-function y =  nn_forward(model, input, nModulesMax)
+function y_out =  nn_forward(model, input, idxsModulesOutput)
        
     nModules = model.nModules;
     if nargin >= 3    
-        nModules_use = min(nModules, nModulesMax);
+        nModules_use = min(nModules, max(idxsModulesOutput));
     else
         nModules_use = nModules;
+        idxsModulesOutput = nModules_use;
     end 
+    outputMultiple = ~isequal(idxsModulesOutput, nModules_use);
 
+    if outputMultiple
+        y_out = cell(1,nModules_use);
+    end
     
-    y = input;
+    y = single(input);
     for mod_i = 1:nModules_use
         m = model.modules{mod_i};
         module_type = strtok(m.type, '(');
+        
+        if isfield(m, 'padW') && (m.padW > 0 || m.padH > 0)
+           y = nn_spatialZeroPadding(y, m.padW, m.padW, m.padH, m.padH);
+        end
+        
         switch module_type
             
             case 'SpatialConvolution',
@@ -65,9 +75,15 @@ function y =  nn_forward(model, input, nModulesMax)
                 
         end
         
-        
+      
+        if outputMultiple && any(mod_i == idxsModulesOutput) 
+            y_out{mod_i} = y;
+        end
     end
     
+    if ~outputMultiple 
+        y_out = y;
+    end
         
       
 
@@ -143,7 +159,7 @@ function y_out = nn_spatialSubSampling(y, kH, kW, dH, dW, maxFlag)
     %%sudo apt-get install gcc-4.7 g++-4.7
 %     maxFlag = 0;
     
-    y_out = nn_spatialPooling_c(single(y), kH, kW, dH, dW, maxFlag);
+        y_out = nn_spatialPooling_c(single(y), single(kH), single(kW), single(dH), single(dW), maxFlag);
 
 %     y_out2 = nn_spatialSubSampling_Matlab(y, kH, kW, dH, dW, maxFlag);
     
