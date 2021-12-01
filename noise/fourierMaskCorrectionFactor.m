@@ -4,7 +4,7 @@ function g = fourierMaskCorrectionFactor(mask, cycPerImage_range)
     size_factor = sqrt(numel(mask));
 
     
-    if exist('cycPerImage_range', 'var') && ~isempty(cycPerImage_range)
+    if exist('cycPerImage_range', 'var') && ~isempty(cycPerImage_range) && ndims(mask) <= 2
         maskIntegral = pi*(cycPerImage_range(2)^2-cycPerImage_range(1)^2);    
     else
         maskIntegral = sum(mask(:).^2);

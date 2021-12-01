@@ -7,7 +7,7 @@ function [arg_out, gain_factor] = fourierMask(imSize_arg, freqRange, freqRange_t
         opt.applyFourierMaskGainFactor = 0;
     end
 
-    if numel(imSize_arg) <= 2
+    if numel(imSize_arg) <= 3
         imSize = imSize_arg;
         haveData = 0;
     else
@@ -17,6 +17,8 @@ function [arg_out, gain_factor] = fourierMask(imSize_arg, freqRange, freqRange_t
     end
 
     do1Dvector = any(imSize == 1) || length(imSize) == 1; %% 1D vector;
+    do2Dmatrix = length(imSize) == 2 && all(imSize > 1);
+    do3Dtensor = length(imSize) == 3 && all(imSize > 1);
     if do1Dvector
         N = prod(imSize);
         pix_per_image = N;
@@ -104,7 +106,7 @@ function [arg_out, gain_factor] = fourierMask(imSize_arg, freqRange, freqRange_t
         
         
         
-    elseif all(imSize > 1)  %% 2D matrix
+    elseif do2Dmatrix  %% 2D matrix
         
 %         pix_per_cycle_range = [4, 8];
         
@@ -169,7 +171,84 @@ function [arg_out, gain_factor] = fourierMask(imSize_arg, freqRange, freqRange_t
 
         
         
+    elseif do3Dtensor
+        
+       
+        ny = imSize(1);
+        nx = imSize(2);
+        nz = imSize(3);
+%         pix_per_image = min([M,N,T]);
+        %         pix_per_cycle_range = [4, 8];
+        
+        % cyc_per_image_range = ./ [M, N];
+        % pix_per_image_x = M;
+        % pix_per_image_y = N;
+        %
+        % cyc_per_image_range_x = cyc_per_pix_range .* pix_per_image_x;
+        % cyc_per_image_range_y = cyc_per_pix_range .* pix_per_image_y;
+               
+        
+        nMid_y = floor(ny/2)+1;
+        nMid_x = floor(nx/2)+1;
+        nMid_z = floor(nz/2)+1;
+
+        
+        % cyc_per_image = [2,2];
+        
+        if ny >= nx
+            x_scale = nx/ny;
+            y_scale = 1;
+            z_scale = 1;
+        else
+            x_scale = 1;
+            y_scale = ny/nx;
+            z_scale = 1;
+        end
+                
+        [y_idx, x_idx, z_idx] = meshgrid(1:ny, 1:nx, 1:nz);
+        r = sqrt( (x_scale*(x_idx - nMid_y)).^2 + (y_scale*(y_idx - nMid_y)).^2 + (z_scale*(z_idx - nMid_z)).^2 );
+        
+        cycPerImageRange_arg = [];
+        switch maskType
+            case 'band',
+                mask = fourierAnnulus(r, cycPerImage_range);
+                %%
+                cycPerImageRange_arg = cycPerImage_range;
+                
+            case '1/f',
+                mask = 1 ./ (r.^ (n_mask));
+                mask(r==0) = 0;
+                                
+%                 mask = mask ./ r;
+                
+        end
+        
+        gain_factor = fourierMaskCorrectionFactor(mask, cycPerImageRange_arg);
+        
+        if opt.applyFourierMaskGainFactor
+            mask = mask * gain_factor;
+        end
+        
+        if haveData
+            Xf = fftshift( fftshift(fft2( X), 1), 2);
+            n3 = size(Xf, 3);
+            for i = 1:n3
+                X_filtered(:,:,i) = ifft2( ifftshift( Xf(:,:,i) .* mask), 'symmetric') ;
+            end
+            
+            arg_out = X_filtered; % * gain_factor; (already multiplied the mask by the gain factor)
+            
+        else
+            arg_out = mask;
+        end
+
+        
+        
+        
+        
     end
+        
+        
 
     
     

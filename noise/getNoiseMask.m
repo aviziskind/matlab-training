@@ -1,4 +1,7 @@
-function [noiseMasks, noiseMasks_fftshifted, all_f_exp] = getNoiseMask(noiseFilter, imageSize)
+function [noiseMasks, noiseMasks_fftshifted, all_f_exp] = getNoiseMask(noiseFilter, imageSize, justOneOutput)
+    % noiseMasks are what we use
+    % noiseMasks_fftshifted are for visualization.
+    
     noiseMasks_fftshifted = {[]};
     filtType = noiseFilter.filterType;
     
@@ -73,14 +76,26 @@ function [noiseMasks, noiseMasks_fftshifted, all_f_exp] = getNoiseMask(noiseFilt
                 noiseMasks{1} = maskSum_rescaled;
                                 
             end
-                
-        end
-                
+        end    
+       
 %                         allPinkPlusWhiteNoiseFilters = arrayfun(@(f) struct('filterType', '1/fPwhite', 'f_exp', f), allF_exps, 'un', 0);
 %         allPinkOrWhiteNoiseFilters = arrayfun(@(f) struct('filterType',   '1/fOwhite', 'f_exp', f), allF_exps, 'un', 0);
-                
+           
+    elseif strcmp(filtType, 'vertHoriz')
+            
+        mask_fft_shifted = getSpatTempFourierMask(imageSize, noiseFilter.dir, noiseFilter.decay_width_deg, noiseFilter.margin_deg);
+        noiseMasks_fftshifted{1} = mask_fft_shifted;
+        noiseMasks{1}            = ifftshift(mask_fft_shifted);
+            
     end    
+  
+    
+    if exist('justOneOutput', 'var') && isequal(justOneOutput, 1) && length(noiseMasks) == 1;
+        noiseMasks = noiseMasks{1};
+        noiseMasks_fftshifted = noiseMasks_fftshifted{1};
         
+        
+    end
         
 
 end
